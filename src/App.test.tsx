@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test } from 'vitest'
@@ -7,8 +8,12 @@ const TODO_STORAGE_KEY = 'code-todo-items'
 
 function renderApp() {
   const user = userEvent.setup()
-  render(<App />)
-  return { user }
+  const view = render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+  return { user, ...view }
 }
 
 async function addTodo(
@@ -18,13 +23,23 @@ async function addTodo(
     priority = 'P2',
   }: { title?: string; priority?: 'P1' | 'P2' | 'P3' } = {},
 ) {
+  const titleInput = screen.getByPlaceholderText('Add a code todo...')
+
+  await user.clear(titleInput)
   await user.type(
-    screen.getByPlaceholderText('Add a code todo...'),
+    titleInput,
     title,
   )
   await user.selectOptions(screen.getByLabelText('Priority'), priority)
   await user.click(screen.getByRole('button', { name: 'Add todo' }))
   return { title, priority }
+}
+
+function getTodoRow(title: string) {
+  const row = screen.getByText(title).closest('li')
+
+  expect(row).not.toBeNull()
+  return row as HTMLLIElement
 }
 
 describe('App todo behavior', () => {
@@ -35,13 +50,15 @@ describe('App todo behavior', () => {
   test('adds a todo and displays it in the list', async () => {
     const { user } = renderApp()
 
-    const { title } = await addTodo(user, {
+    const { title, priority } = await addTodo(user, {
       title: 'Ship syntax highlighting',
       priority: 'P1',
     })
 
-    expect(screen.getByText(title)).toBeInTheDocument()
-    expect(screen.getByText('P1')).toBeInTheDocument()
+    const todoRow = getTodoRow(title)
+
+    expect(within(todoRow).getByText(title)).toBeInTheDocument()
+    expect(within(todoRow).getByText(priority)).toBeInTheDocument()
   })
 
   test('completes a todo with a title-specific action', async () => {
@@ -52,7 +69,14 @@ describe('App todo behavior', () => {
       screen.getByRole('button', { name: `Complete ${title}` }),
     )
 
-    expect(screen.getByText(/completed/i)).toBeInTheDocument()
+    const todoRow = getTodoRow(title)
+
+    expect(
+      within(todoRow).queryByRole('button', { name: `Complete ${title}` }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(todoRow).getByRole('button', { name: `Restore ${title}` }),
+    ).toBeInTheDocument()
   })
 
   test('restores a completed todo with a title-specific action', async () => {
@@ -66,7 +90,14 @@ describe('App todo behavior', () => {
       screen.getByRole('button', { name: `Restore ${title}` }),
     )
 
-    expect(screen.queryByText(/completed/i)).not.toBeInTheDocument()
+    const todoRow = getTodoRow(title)
+
+    expect(
+      within(todoRow).getByRole('button', { name: `Complete ${title}` }),
+    ).toBeInTheDocument()
+    expect(
+      within(todoRow).queryByRole('button', { name: `Restore ${title}` }),
+    ).not.toBeInTheDocument()
   })
 
   test('deletes a todo with a title-specific action', async () => {
@@ -92,24 +123,35 @@ describe('App todo behavior', () => {
     expect(screen.queryByText('Polish P3 detail')).not.toBeInTheDocument()
   })
 
-  test('loads persisted todos from local storage', () => {
+  test('rehydrates persisted todos after a remount', () => {
+    const savedTodos = [
+      {
+        id: 'todo-1',
+        title: 'Persisted code review follow-up',
+        priority: 'P1',
+        completed: false,
+        createdAt: '2026-05-04T00:00:00.000Z',
+      },
+    ]
+
     window.localStorage.setItem(
       TODO_STORAGE_KEY,
-      JSON.stringify([
-        {
-          id: 'todo-1',
-          title: 'Persisted code review follow-up',
-          priority: 'P1',
-          completed: false,
-          createdAt: '2026-05-04T00:00:00.000Z',
-        },
-      ]),
+      JSON.stringify(savedTodos),
     )
 
-    render(<App />)
-
+    const firstMount = renderApp()
     expect(
       screen.getByText('Persisted code review follow-up'),
+    ).toBeInTheDocument()
+
+    firstMount.unmount()
+
+    renderApp()
+
+    const todoRow = getTodoRow('Persisted code review follow-up')
+
+    expect(
+      within(todoRow).getByText(savedTodos[0].priority),
     ).toBeInTheDocument()
   })
 })
