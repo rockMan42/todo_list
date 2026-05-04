@@ -1,5 +1,5 @@
 import { StrictMode } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test } from 'vitest'
 import App from './App'
@@ -25,11 +25,7 @@ async function addTodo(
 ) {
   const titleInput = screen.getByPlaceholderText('Add a code todo...')
 
-  await user.clear(titleInput)
-  await user.type(
-    titleInput,
-    title,
-  )
+  fireEvent.change(titleInput, { target: { value: title } })
   await user.selectOptions(screen.getByLabelText('Priority'), priority)
   await user.click(screen.getByRole('button', { name: 'Add todo' }))
   return { title, priority }
@@ -51,7 +47,7 @@ describe('App todo behavior', () => {
     const { user } = renderApp()
 
     const { title, priority } = await addTodo(user, {
-      title: 'Ship syntax highlighting',
+      title: 'P1 bug',
       priority: 'P1',
     })
 
