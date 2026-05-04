@@ -123,35 +123,30 @@ describe('App todo behavior', () => {
     expect(screen.queryByText('Polish P3 detail')).not.toBeInTheDocument()
   })
 
-  test('rehydrates persisted todos after a remount', () => {
-    const savedTodos = [
-      {
-        id: 'todo-1',
-        title: 'Persisted code review follow-up',
-        priority: 'P1',
-        completed: false,
-        createdAt: '2026-05-04T00:00:00.000Z',
-      },
-    ]
+  test('persists a completed todo to local storage and rehydrates it after a remount', async () => {
+    const { user, unmount } = renderApp()
+    const { title, priority } = await addTodo(user, {
+      title: 'Persist completed review notes',
+      priority: 'P1',
+    })
 
-    window.localStorage.setItem(
-      TODO_STORAGE_KEY,
-      JSON.stringify(savedTodos),
+    await user.click(
+      screen.getByRole('button', { name: `Complete ${title}` }),
     )
 
-    const firstMount = renderApp()
-    expect(
-      screen.getByText('Persisted code review follow-up'),
-    ).toBeInTheDocument()
+    expect(window.localStorage.getItem(TODO_STORAGE_KEY)).toContain(title)
+    expect(window.localStorage.getItem(TODO_STORAGE_KEY)).toContain(priority)
+    expect(window.localStorage.getItem(TODO_STORAGE_KEY)).toContain('true')
 
-    firstMount.unmount()
+    unmount()
 
     renderApp()
 
-    const todoRow = getTodoRow('Persisted code review follow-up')
+    const todoRow = getTodoRow(title)
 
+    expect(within(todoRow).getByText(priority)).toBeInTheDocument()
     expect(
-      within(todoRow).getByText(savedTodos[0].priority),
+      within(todoRow).getByRole('button', { name: `Restore ${title}` }),
     ).toBeInTheDocument()
   })
 })
