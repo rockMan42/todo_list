@@ -9,7 +9,12 @@ interface TodoListProps {
 
 function TodoList({ todos, onToggle, onDelete }: TodoListProps) {
   if (todos.length === 0) {
-    return <p className="todo-list__empty">No todos yet.</p>
+    return (
+      <div className="todo-list__empty">
+        <p>No loose ends on the board.</p>
+        <span>Add a follow-up above to keep the next important thing in sight.</span>
+      </div>
+    )
   }
 
   return (
