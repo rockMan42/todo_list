@@ -27,7 +27,10 @@ function TodoInput({ onAdd }: TodoInputProps) {
 
   return (
     <form className="todo-input" onSubmit={handleSubmit}>
-      <input ref={titleRef} type="text" placeholder="Add a code todo..." />
+      <label className="todo-input__field">
+        <span>New note</span>
+        <input ref={titleRef} type="text" placeholder="Capture a loose end..." />
+      </label>
       <label className="todo-input__priority">
         <span>Priority</span>
         <select ref={priorityRef} aria-label="Priority" defaultValue="P2">
@@ -36,7 +39,7 @@ function TodoInput({ onAdd }: TodoInputProps) {
           <option value="P3">P3</option>
         </select>
       </label>
-      <button type="submit">Add todo</button>
+      <button type="submit">Add to board</button>
     </form>
   )
 }

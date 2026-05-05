@@ -23,11 +23,11 @@ async function addTodo(
     priority = 'P2',
   }: { title?: string; priority?: 'P1' | 'P2' | 'P3' } = {},
 ) {
-  const titleInput = screen.getByPlaceholderText('Add a code todo...')
+  const titleInput = screen.getByPlaceholderText('Capture a loose end...')
 
   fireEvent.change(titleInput, { target: { value: title } })
   await user.selectOptions(screen.getByLabelText('Priority'), priority)
-  await user.click(screen.getByRole('button', { name: 'Add todo' }))
+  await user.click(screen.getByRole('button', { name: 'Add to board' }))
   return { title, priority }
 }
 
@@ -41,6 +41,21 @@ function getTodoRow(title: string) {
 describe('App todo behavior', () => {
   beforeEach(() => {
     window.localStorage.clear()
+  })
+
+  test('renders the editorial hero copy and default summary metrics', () => {
+    renderApp()
+
+    expect(
+      screen.getByRole('heading', { name: 'Clear the loose ends.' }),
+    ).toBeInTheDocument()
+
+    const overview = screen.getByLabelText('Todo overview')
+
+    expect(within(overview).getByText('Total notes')).toBeInTheDocument()
+    expect(within(overview).getByText('Open loops')).toBeInTheDocument()
+    expect(within(overview).getByText('High priority')).toBeInTheDocument()
+    expect(within(overview).getAllByText('0')).toHaveLength(3)
   })
 
   test('adds a todo and displays it in the list', async () => {
@@ -117,6 +132,23 @@ describe('App todo behavior', () => {
 
     expect(screen.getByText('Ship P1 feature')).toBeInTheDocument()
     expect(screen.queryByText('Polish P3 detail')).not.toBeInTheDocument()
+  })
+
+  test('updates summary metrics after adding and completing todos', async () => {
+    const { user } = renderApp()
+
+    await addTodo(user, { title: 'Ship review polish', priority: 'P1' })
+    await addTodo(user, { title: 'Refine empty state', priority: 'P3' })
+    await user.click(
+      screen.getByRole('button', { name: 'Complete Ship review polish' }),
+    )
+
+    const overview = screen.getByLabelText('Todo overview')
+    const metricGroups = within(overview).getAllByRole('listitem')
+
+    expect(within(metricGroups[0]).getByText('2')).toBeInTheDocument()
+    expect(within(metricGroups[1]).getByText('1')).toBeInTheDocument()
+    expect(within(metricGroups[2]).getByText('1')).toBeInTheDocument()
   })
 
   test('persists a completed todo to local storage and rehydrates it after a remount', async () => {
